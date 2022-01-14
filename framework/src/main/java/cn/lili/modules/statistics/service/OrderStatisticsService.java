@@ -10,7 +10,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 订单统计业务层
@@ -34,7 +33,7 @@ public interface OrderStatisticsService extends IService<Order> {
      * @param orderStatus 订单状态
      * @return 订单总数量
      */
-    Integer orderNum(String orderStatus);
+    long orderNum(String orderStatus);
 
     /**
      * 图表统计

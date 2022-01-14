@@ -7,12 +7,12 @@ import cn.lili.common.security.AuthUser;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.vo.ResultMessage;
 import cn.lili.modules.member.entity.dos.Member;
-import cn.lili.modules.wallet.entity.dos.MemberWallet;
-import cn.lili.modules.wallet.entity.vo.MemberWalletVO;
 import cn.lili.modules.member.service.MemberService;
-import cn.lili.modules.wallet.service.MemberWalletService;
 import cn.lili.modules.verification.entity.enums.VerificationEnums;
 import cn.lili.modules.verification.service.VerificationService;
+import cn.lili.modules.wallet.entity.dos.MemberWallet;
+import cn.lili.modules.wallet.entity.vo.MemberWalletVO;
+import cn.lili.modules.wallet.service.MemberWalletService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
@@ -125,7 +125,7 @@ public class MemberWalletBuyerController {
     @ApiImplicitParams({
             @ApiImplicitParam(name = "price", value = "提现金额", required = true, dataType = "double", paramType = "query")
     })
-    public ResultMessage<Boolean> withdrawal(@Max(value = 1000, message = "充值金额单次最多允许提现1000元") @Min(value = 1, message = "充值金额单次最少提现金额为1元") Double price) {
+    public ResultMessage<Boolean> withdrawal(@Max(value = 9999, message = "充值金额单次最多允许提现9999元") @Min(value = 1, message = "充值金额单次最少提现金额为1元") Double price) {
         return ResultUtil.data(memberWalletService.applyWithdrawal(price));
     }
 

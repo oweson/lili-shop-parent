@@ -1,6 +1,6 @@
 package cn.lili.modules.system.token;
 
-import cn.hutool.core.util.StrUtil;
+import cn.hutool.core.text.CharSequenceUtil;
 import cn.lili.cache.Cache;
 import cn.lili.cache.CachePrefix;
 import cn.lili.common.security.AuthUser;
@@ -45,7 +45,7 @@ public class ManagerTokenGenerate extends AbstractTokenGenerate {
     public Token createToken(String username, Boolean longTerm) {
         //生成token
         AdminUser adminUser = adminUserService.findByUsername(username);
-        AuthUser user = new AuthUser(adminUser.getUsername(), adminUser.getId(), UserEnums.MANAGER, adminUser.getNickName(), adminUser.getIsSuper());
+        AuthUser user = new AuthUser(adminUser.getUsername(), adminUser.getId(), adminUser.getAvatar(), UserEnums.MANAGER, adminUser.getNickName(), adminUser.getIsSuper());
 
 
         List<UserMenuVO> userMenuVOList = roleMenuService.findAllMenu(user.getId());
@@ -74,16 +74,16 @@ public class ManagerTokenGenerate extends AbstractTokenGenerate {
         initPermission(superPermissions, queryPermissions);
 
         //循环权限菜单
-        if (userMenuVOList == null || userMenuVOList.isEmpty()) {
+        if (userMenuVOList != null && !userMenuVOList.isEmpty()) {
             userMenuVOList.forEach(menu -> {
                 //循环菜单，赋予用户权限
-                if (StrUtil.isNotEmpty(menu.getPermission())) {
+                if (CharSequenceUtil.isNotEmpty(menu.getPermission())) {
                     //获取路径集合
                     String[] permissionUrl = menu.getPermission().split(",");
                     //for循环路径集合
                     for (String url : permissionUrl) {
                         //如果是超级权限 则计入超级权限
-                        if (menu.getSuper()) {
+                        if (Boolean.TRUE.equals(menu.getSuper())) {
                             //如果已有超级权限，则这里就不做权限的累加
                             if (!superPermissions.contains(url)) {
                                 superPermissions.add(url);

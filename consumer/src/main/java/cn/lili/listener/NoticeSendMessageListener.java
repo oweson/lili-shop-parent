@@ -5,20 +5,19 @@ import cn.lili.common.enums.SwitchEnum;
 import cn.lili.common.vo.PageVO;
 import cn.lili.modules.member.entity.vo.MemberSearchVO;
 import cn.lili.modules.member.entity.vo.MemberVO;
-import cn.lili.modules.member.mapper.MemberMapper;
 import cn.lili.modules.member.service.MemberService;
 import cn.lili.modules.message.entity.dos.MemberMessage;
 import cn.lili.modules.message.entity.dos.Message;
 import cn.lili.modules.message.entity.dos.StoreMessage;
-import cn.lili.modules.sms.entity.dto.SmsReachDTO;
 import cn.lili.modules.message.entity.enums.MessageSendClient;
 import cn.lili.modules.message.entity.enums.MessageStatusEnum;
 import cn.lili.modules.message.entity.enums.RangeEnum;
 import cn.lili.modules.message.service.MemberMessageService;
 import cn.lili.modules.message.service.StoreMessageService;
+import cn.lili.modules.sms.SmsUtil;
+import cn.lili.modules.sms.entity.dto.SmsReachDTO;
 import cn.lili.modules.store.entity.dos.Store;
 import cn.lili.modules.store.service.StoreService;
-import cn.lili.modules.sms.SmsUtil;
 import cn.lili.rocketmq.tags.OtherTagsEnum;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -28,7 +27,6 @@ import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,11 +40,6 @@ import java.util.List;
 @RocketMQMessageListener(topic = "${lili.data.rocketmq.notice-send-topic}", consumerGroup = "${lili.data.rocketmq.notice-send-group}")
 public class NoticeSendMessageListener implements RocketMQListener<MessageExt> {
 
-    /**
-     * 会员
-     */
-    @Resource
-    private MemberMapper memberMapper;
     /**
      * 短信
      */
@@ -82,7 +75,7 @@ public class NoticeSendMessageListener implements RocketMQListener<MessageExt> {
                 //发送全部会员
                 if (smsReachDTO.getSmsRange().equals(RangeEnum.ALL.name())) {
                     //获取所有会员的手机号
-                    List<String> list = memberMapper.getAllMemberMobile();
+                    List<String> list = memberService.getAllMemberMobile();
                     smsUtil.sendBatchSms(smsReachDTO.getSignName(), list, smsReachDTO.getMessageCode());
                     //判断为发送部分用户
                 } else {
@@ -158,12 +151,12 @@ public class NoticeSendMessageListener implements RocketMQListener<MessageExt> {
             //查询所有会员总数，因为会员总数比较大 如果一次性查出来会占用数据库资源，所以要分页查询
             MemberSearchVO memberSearchVO = new MemberSearchVO();
             memberSearchVO.setDisabled(SwitchEnum.OPEN.name());
-            Integer memberNum = memberService.getMemberNum(memberSearchVO);
+            long memberNum = memberService.getMemberNum(memberSearchVO);
             //构建分页查询参数
             //100条查一次
-            Integer pageSize = 100;
-            Integer pageCount = 0;
-            pageCount = memberNum / pageSize;
+            int pageSize = 100;
+            int pageCount;
+            pageCount = (int) (memberNum / pageSize);
             pageCount = memberNum % pageSize > 0 ? pageCount + 1 : pageCount;
             for (int i = 1; i <= pageCount; i++) {
                 PageVO pageVO = new PageVO();

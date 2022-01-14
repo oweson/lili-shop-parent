@@ -6,22 +6,22 @@ import cn.lili.cache.Cache;
 import cn.lili.cache.CachePrefix;
 import cn.lili.common.enums.ResultCode;
 import cn.lili.common.exception.ServiceException;
-import cn.lili.common.security.context.UserContext;
-import cn.lili.modules.sms.AliSmsUtil;
-import cn.lili.modules.sms.SmsUtil;
-import cn.lili.common.utils.CommonUtil;
-import cn.lili.modules.verification.entity.enums.VerificationEnums;
 import cn.lili.common.properties.SmsTemplateProperties;
 import cn.lili.common.properties.SystemSettingProperties;
+import cn.lili.common.security.context.UserContext;
 import cn.lili.common.utils.Base64Utils;
+import cn.lili.common.utils.CommonUtil;
 import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.service.MemberService;
+import cn.lili.modules.sms.AliSmsUtil;
+import cn.lili.modules.sms.SmsUtil;
 import cn.lili.modules.sms.entity.dos.SmsSign;
 import cn.lili.modules.sms.entity.dos.SmsTemplate;
 import cn.lili.modules.system.entity.dos.Setting;
 import cn.lili.modules.system.entity.dto.SmsSetting;
 import cn.lili.modules.system.entity.enums.SettingEnum;
 import cn.lili.modules.system.service.SettingService;
+import cn.lili.modules.verification.entity.enums.VerificationEnums;
 import com.aliyun.dysmsapi20170525.models.*;
 import com.aliyun.teaopenapi.models.Config;
 import com.google.gson.Gson;
@@ -155,7 +155,7 @@ public class SmsUtilAliImplService implements SmsUtil, AliSmsUtil {
         try {
             SendSmsResponse response = client.sendSms(sendSmsRequest);
         } catch (Exception e) {
-            log.error("发送短信错误",e);
+            log.error("发送短信错误", e);
         }
     }
 
@@ -191,7 +191,7 @@ public class SmsUtilAliImplService implements SmsUtil, AliSmsUtil {
             try {
                 client.sendBatchSms(sendBatchSmsRequest);
             } catch (Exception e) {
-                log.error("批量发送短信错误",e);
+                log.error("批量发送短信错误", e);
             }
         }
 
@@ -363,7 +363,7 @@ public class SmsUtilAliImplService implements SmsUtil, AliSmsUtil {
             config.endpoint = "dysmsapi.aliyuncs.com";
             return new com.aliyun.dysmsapi20170525.Client(config);
         } catch (Exception e) {
-            log.error("短信初始化错误",e);
+            log.error("短信初始化错误", e);
         }
         return null;
     }
@@ -377,6 +377,6 @@ public class SmsUtilAliImplService implements SmsUtil, AliSmsUtil {
      * @return
      */
     static String cacheKey(VerificationEnums verificationEnums, String mobile, String uuid) {
-        return CachePrefix.SMS_CODE.getPrefix() + verificationEnums.name() + mobile;
+        return CachePrefix.SMS_CODE.getPrefix() + verificationEnums.name() + uuid + mobile;
     }
 }

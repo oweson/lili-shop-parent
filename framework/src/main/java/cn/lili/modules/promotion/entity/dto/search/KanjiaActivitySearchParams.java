@@ -1,9 +1,10 @@
-package cn.lili.modules.promotion.entity.vos.kanjia;
+package cn.lili.modules.promotion.entity.dto.search;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * 砍价活动搜索参数
@@ -11,8 +12,9 @@ import lombok.Data;
  * @author Bulbasaur
  * @date: 2021/7/13 2:41 下午
  */
+@EqualsAndHashCode(callSuper = true)
 @Data
-public class KanjiaActivitySearchParams {
+public class KanjiaActivitySearchParams extends BasePromotionsSearchParams {
 
     @ApiModelProperty(value = "砍价活动ID")
     private String id;

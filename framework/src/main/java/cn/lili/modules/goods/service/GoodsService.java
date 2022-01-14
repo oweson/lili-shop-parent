@@ -49,7 +49,7 @@ public interface GoodsService extends IService<Goods> {
      * @param categoryId 分类ID
      * @return 商品数量
      */
-    Integer getGoodsCountByCategory(String categoryId);
+    long getGoodsCountByCategory(String categoryId);
 
     /**
      * 添加商品
@@ -83,6 +83,15 @@ public interface GoodsService extends IService<Goods> {
      */
     IPage<Goods> queryByParams(GoodsSearchParams goodsSearchParams);
 
+
+    /**
+     * 商品查询
+     *
+     * @param goodsSearchParams 查询参数
+     * @return 商品信息
+     */
+    List<Goods> queryListByParams(GoodsSearchParams goodsSearchParams);
+
     /**
      * 批量审核商品
      *
@@ -103,6 +112,15 @@ public interface GoodsService extends IService<Goods> {
      */
     Boolean updateGoodsMarketAble(List<String> goodsIds, GoodsStatusEnum goodsStatusEnum, String underReason);
 
+    /**
+     * 更新商品上架状态状态
+     *
+     * @param goodsIds        商品ID集合
+     * @param goodsStatusEnum 更新的商品状态
+     * @param underReason     下架原因
+     * @return 更新结果
+     */
+    Boolean managerUpdateGoodsMarketAble(List<String> goodsIds, GoodsStatusEnum goodsStatusEnum, String underReason);
     /**
      * 删除商品
      *
@@ -129,11 +147,19 @@ public interface GoodsService extends IService<Goods> {
     void updateStock(String goodsId, Integer quantity);
 
     /**
-     * 更新SKU评价数量
+     * 更新商品评价数量
      *
      * @param goodsId 商品ID
      */
     void updateGoodsCommentNum(String goodsId);
+
+    /**
+     * 更新商品的购买数量
+     *
+     * @param goodsId  商品ID
+     * @param buyCount 购买数量
+     */
+    void updateGoodsBuyCount(String goodsId, int buyCount);
 
     /**
      * 批量更新商品的店铺信息
@@ -143,7 +169,8 @@ public interface GoodsService extends IService<Goods> {
     /**
      * 统计店铺的商品数量
      * @param storeId 店铺id
+     * @return
      */
-    Integer countStoreGoodsNum(String storeId);
+    long countStoreGoodsNum(String storeId);
 
 }

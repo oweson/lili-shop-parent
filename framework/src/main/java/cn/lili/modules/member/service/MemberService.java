@@ -9,13 +9,13 @@ import cn.lili.modules.member.entity.dos.Member;
 import cn.lili.modules.member.entity.dto.ManagerMemberEditDTO;
 import cn.lili.modules.member.entity.dto.MemberAddDTO;
 import cn.lili.modules.member.entity.dto.MemberEditDTO;
-import cn.lili.modules.member.entity.vo.MemberDistributionVO;
 import cn.lili.modules.member.entity.vo.MemberSearchVO;
 import cn.lili.modules.member.entity.vo.MemberVO;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 会员业务层
@@ -203,7 +203,16 @@ public interface MemberService extends IService<Member> {
      * @param memberSearchVO
      * @return 会员总数
      */
-    Integer getMemberNum(MemberSearchVO memberSearchVO);
+    long getMemberNum(MemberSearchVO memberSearchVO);
+
+    /**
+     * 获取指定会员数据
+     *
+     * @param columns 指定获取的列
+     * @param memberIds 会员ids
+     * @return 指定会员数据
+     */
+    List<Map<String, Object>> listFieldsByMemberIds(String columns, List<String> memberIds);
 
     /**
      * 登出
@@ -211,4 +220,11 @@ public interface MemberService extends IService<Member> {
      * @param userEnums token角色类型
      */
     void logout(UserEnums userEnums);
+
+    /**
+     * 获取所有会员的手机号
+     *
+     * @return 所有会员的手机号
+     */
+    List<String> getAllMemberMobile();
 }

@@ -90,7 +90,7 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
                 .eq("store_id", storeId)
                 .eq("flow_type", FlowTypeEnum.PAY.name())
                 .between("create_time", startTime, endTime));
-        Double orderPrice = 0D;
+        double orderPrice = 0D;
         if (orderBill != null) {
             bill.setOrderPrice(orderBill.getOrderPrice());
             bill.setCommissionPrice(orderBill.getCommissionPrice());
@@ -98,9 +98,8 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
             bill.setSiteCouponCommission(orderBill.getSiteCouponCommission());
             bill.setPointSettlementPrice(orderBill.getPointSettlementPrice());
             bill.setKanjiaSettlementPrice(orderBill.getKanjiaSettlementPrice());
-            //入账金额=订单金额+积分商品+砍价商品
-            orderPrice = CurrencyUtil.add(CurrencyUtil.add(orderBill.getBillPrice(), orderBill.getPointSettlementPrice()),
-                    orderBill.getKanjiaSettlementPrice());
+            //入账金额=订单金额
+            orderPrice = orderBill.getBillPrice();
         }
 
 
@@ -192,6 +191,7 @@ public class BillServiceImpl extends ServiceImpl<BillMapper, Bill> implements Bi
         }
         LambdaUpdateWrapper<Bill> lambdaUpdateWrapper = Wrappers.lambdaUpdate();
         lambdaUpdateWrapper.eq(Bill::getId, id);
+        lambdaUpdateWrapper.set(Bill::getPayTime, new Date());
         lambdaUpdateWrapper.set(Bill::getBillStatus, BillStatusEnum.COMPLETE.name());
         return this.update(lambdaUpdateWrapper);
     }
