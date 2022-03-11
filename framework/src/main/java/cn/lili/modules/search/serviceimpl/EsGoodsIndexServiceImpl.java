@@ -389,9 +389,8 @@ public class EsGoodsIndexServiceImpl extends BaseElasticsearchService implements
     @Override
     public void updateEsGoodsIndexPromotions(List<String> ids, BasePromotions promotion, String key) {
         BulkRequest bulkRequest = new BulkRequest();
-        log.info("修改商品活动索引");
+        log.info("更新商品索引的促销信息----------");
         log.info("商品ids: {}", ids);
-        log.info("活动关键字: {}", key);
         log.info("活动: {}", promotion);
         for (String id : ids) {
             UpdateRequest updateRequest = this.updateEsGoodsIndexPromotions(id, promotion, key);
@@ -449,7 +448,6 @@ public class EsGoodsIndexServiceImpl extends BaseElasticsearchService implements
             goodsIndices = new ArrayList<>(IterableUtil.toCollection(all));
         }
         List<String> skuIds = goodsIndices.stream().map(EsGoodsIndex::getId).collect(Collectors.toList());
-        this.deleteEsGoodsPromotionByPromotionId(skuIds, promotion.getId());
         this.updateEsGoodsIndexPromotions(skuIds, promotion, key);
     }
 
@@ -475,47 +473,57 @@ public class EsGoodsIndexServiceImpl extends BaseElasticsearchService implements
     }
 
     @Override
-    public void deleteEsGoodsPromotionByPromotionId(List<String> skuIds, String promotionId) {
+    public void deleteEsGoodsPromotionByPromotionKey(List<String> skuIds, String promotionsKey) {
         BulkRequest bulkRequest = new BulkRequest();
         log.info("删除商品活动索引");
         log.info("商品skuIds: {}", skuIds);
-        log.info("活动Id: {}", promotionId);
-        if (skuIds != null && !skuIds.isEmpty()) {
-            for (String skuId : skuIds) {
-                EsGoodsIndex goodsIndex = findById(skuId);
-                //商品索引不为空
-                if (goodsIndex != null) {
-                    UpdateRequest updateRequest = this.removePromotionByPromotionId(goodsIndex, promotionId);
-                    if (updateRequest != null) {
-                        bulkRequest.add(updateRequest);
-                    }
-                } else {
-                    log.error("更新索引商品促销信息失败！skuId 为 【{}】的索引不存在！", skuId);
-                }
-            }
-        } else {
-            for (EsGoodsIndex goodsIndex : this.goodsIndexRepository.findAll()) {
-                UpdateRequest updateRequest = this.removePromotionByPromotionId(goodsIndex, promotionId);
+        log.info("活动Key: {}", promotionsKey);
+        if (skuIds == null || skuIds.isEmpty()) {
+            return;
+        }
+        for (String skuId : skuIds) {
+            EsGoodsIndex goodsIndex = findById(skuId);
+            //商品索引不为空
+            if (goodsIndex != null) {
+                UpdateRequest updateRequest = this.removePromotionByPromotionKey(goodsIndex, promotionsKey);
                 if (updateRequest != null) {
                     bulkRequest.add(updateRequest);
                 }
+            } else {
+                log.error("更新索引商品促销信息失败！skuId 为 【{}】的索引不存在！", skuId);
             }
         }
         this.executeBulkUpdateRequest(bulkRequest);
+    }
 
+    /**
+     * 删除索引中指定的促销活动id的促销活动
+     *
+     * @param promotionsKey 促销活动Key
+     */
+    @Override
+    public void deleteEsGoodsPromotionByPromotionKey(String promotionsKey) {
+        BulkRequest bulkRequest = new BulkRequest();
+        for (EsGoodsIndex goodsIndex : this.goodsIndexRepository.findAll()) {
+            UpdateRequest updateRequest = this.removePromotionByPromotionKey(goodsIndex, promotionsKey);
+            if (updateRequest != null) {
+                bulkRequest.add(updateRequest);
+            }
+        }
+        this.executeBulkUpdateRequest(bulkRequest);
     }
 
     /**
      * 从索引中删除指定促销活动id的促销活动
      *
      * @param goodsIndex  索引
-     * @param promotionId 促销活动id
+     * @param promotionsKey 促销活动key
      */
-    private UpdateRequest removePromotionByPromotionId(EsGoodsIndex goodsIndex, String promotionId) {
+    private UpdateRequest removePromotionByPromotionKey(EsGoodsIndex goodsIndex, String promotionsKey) {
         Map<String, Object> promotionMap = goodsIndex.getPromotionMap();
         if (promotionMap != null && !promotionMap.isEmpty()) {
             //如果存在同促销ID的活动删除
-            List<String> collect = promotionMap.keySet().stream().filter(i -> i.split("-")[1].equals(promotionId)).collect(Collectors.toList());
+            List<String> collect = promotionMap.keySet().stream().filter(i -> i.equals(promotionsKey)).collect(Collectors.toList());
             collect.forEach(promotionMap::remove);
             goodsIndex.setPromotionMapJson(JSONUtil.toJsonStr(promotionMap));
             return this.getGoodsIndexPromotionUpdateRequest(goodsIndex.getId(), promotionMap);
@@ -636,6 +644,11 @@ public class EsGoodsIndexServiceImpl extends BaseElasticsearchService implements
         } else {
             promotionMap = goodsIndex.getPromotionMap();
         }
+
+        log.info("ES修改商品活动索引-活动信息:{}", promotion);
+        log.info("ES修改商品活动索引-活动信息状态:{}", promotion.getPromotionStatus());
+        log.info("ES修改商品活动索引-原商品索引信息:{}", goodsIndex);
+        log.info("ES修改商品活动索引-原商品索引活动信息:{}", promotionMap);
         //如果活动已结束
         if (promotion.getPromotionStatus().equals(PromotionsStatusEnum.END.name()) || promotion.getPromotionStatus().equals(PromotionsStatusEnum.CLOSE.name())) {//如果存在活动
             //删除活动
@@ -643,6 +656,7 @@ public class EsGoodsIndexServiceImpl extends BaseElasticsearchService implements
         } else {
             promotionMap.put(key, promotion);
         }
+        log.info("ES修改商品活动索引-过滤后商品索引活动信息:{}", promotionMap);
         return this.getGoodsIndexPromotionUpdateRequest(goodsIndex.getId(), promotionMap);
     }
 
@@ -656,7 +670,8 @@ public class EsGoodsIndexServiceImpl extends BaseElasticsearchService implements
         UpdateRequest updateRequest = new UpdateRequest();
         updateRequest.index(getIndexName());
         updateRequest.id(id);
-        updateRequest.retryOnConflict(5);
+//        updateRequest.retryOnConflict(5);
+//        updateRequest.version(promotionMap.size());
         Map<String, Object> params = new HashMap<>();
         params.put("promotionMap", JSONUtil.toJsonStr(promotionMap));
         Script script = new Script(ScriptType.INLINE, "painless", "ctx._source.promotionMapJson=params.promotionMap;", params);
