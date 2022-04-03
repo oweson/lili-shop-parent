@@ -251,7 +251,7 @@ lili:
     #        username: elastic
     #        password: LiLiShopES
     logstash:
-      server: 127.0.0.1:4560
+      server: 127.0.0.1:2015
     rocketmq:
       promotion-topic: lili_promotion_topic
       promotion-group: lili_promotion_group
@@ -270,7 +270,7 @@ lili:
       notice-send-topic: lili_send_notice_topic
       notice-send-group: lili_send_notice_group
 rocketmq:
-  name-server: 127.0.0.1:9876
+  name-server: 42.194.214.172:9876
   producer:
     group: lili_group
     send-message-timeout: 30000

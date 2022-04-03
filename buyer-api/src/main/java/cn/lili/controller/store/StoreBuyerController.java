@@ -57,7 +57,7 @@ public class StoreBuyerController {
         return ResultUtil.data(storeService.findByConditionPage(entity, page));
     }
 
-    @ApiOperation(value = "通过id获取店铺信息")
+    @ApiOperation(value = "通过id获取店铺信息-ok")
     @ApiImplicitParam(name = "id", value = "店铺ID", required = true, paramType = "path")
     @GetMapping(value = "/get/detail/{id}")
     public ResultMessage<StoreBasicInfoVO> detail(@NotNull @PathVariable String id) {
