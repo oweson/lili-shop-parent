@@ -306,13 +306,30 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         LambdaQueryWrapper<Goods> queryWrapper = this.getQueryWrapperByStoreAuthority();
         queryWrapper.in(Goods::getId, goodsIds);
         List<Goods> goodsList = this.list(queryWrapper);
-        for (Goods goods : goodsList) {
-            goodsSkuService.updateGoodsSkuStatus(goods);
-        }
+        this.updateGoodsStatus(goodsIds, goodsStatusEnum, goodsList);
+        return result;
+    }
 
-        if (GoodsStatusEnum.DOWN.equals(goodsStatusEnum)) {
-            this.deleteEsGoods(goodsIds);
-        }
+    /**
+     * 更新商品上架状态状态
+     *
+     * @param storeId         店铺ID
+     * @param goodsStatusEnum 更新的商品状态
+     * @param underReason     下架原因
+     * @return 更新结果
+     */
+    @Override
+    public Boolean updateGoodsMarketAbleByStoreId(String storeId, GoodsStatusEnum goodsStatusEnum, String underReason) {
+        boolean result;
+
+        LambdaUpdateWrapper<Goods> updateWrapper = this.getUpdateWrapperByStoreAuthority();
+        updateWrapper.set(Goods::getMarketEnable, goodsStatusEnum.name());
+        updateWrapper.set(Goods::getUnderMessage, underReason);
+        updateWrapper.eq(Goods::getStoreId, storeId);
+        result = this.update(updateWrapper);
+
+        //修改规格商品
+        this.goodsSkuService.updateGoodsSkuStatusByStoreId(storeId, goodsStatusEnum.name(), null);
         return result;
     }
 
@@ -339,12 +356,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         LambdaQueryWrapper<Goods> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.in(Goods::getId, goodsIds);
         List<Goods> goodsList = this.list(queryWrapper);
-        for (Goods goods : goodsList) {
-            goodsSkuService.updateGoodsSkuStatus(goods);
-        }
-        if (GoodsStatusEnum.DOWN.equals(goodsStatusEnum)) {
-            this.deleteEsGoods(goodsIds);
-        }
+        this.updateGoodsStatus(goodsIds, goodsStatusEnum, goodsList);
         return result;
     }
 
@@ -365,6 +377,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         for (Goods goods : goodsList) {
             //修改SKU状态
             goodsSkuService.updateGoodsSkuStatus(goods);
+            cache.remove(CachePrefix.GOODS.getPrefix() + goods.getId());
         }
 
         this.deleteEsGoods(goodsIds);
@@ -452,6 +465,26 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
                         .eq(Goods::getMarketEnable, GoodsStatusEnum.UPPER.name()));
     }
 
+
+    /**
+     * 更新商品状态
+     *
+     * @param goodsIds        商品ID
+     * @param goodsStatusEnum 商品状态
+     * @param goodsList       商品列表
+     */
+    private void updateGoodsStatus(List<String> goodsIds, GoodsStatusEnum goodsStatusEnum, List<Goods> goodsList) {
+        for (Goods goods : goodsList) {
+            if (GoodsStatusEnum.DOWN.equals(goodsStatusEnum)) {
+                cache.remove(CachePrefix.GOODS.getPrefix() + goods.getId());
+            }
+            goodsSkuService.updateGoodsSkuStatus(goods);
+        }
+
+        if (GoodsStatusEnum.DOWN.equals(goodsStatusEnum)) {
+            this.deleteEsGoods(goodsIds);
+        }
+    }
 
     /**
      * 发送删除es索引的信息

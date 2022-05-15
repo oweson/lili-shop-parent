@@ -78,6 +78,7 @@ public class StoreFlowServiceImpl extends ServiceImpl<StoreFlowMapper, StoreFlow
         Order order = orderService.getBySn(orderSn);
         //获取订单促销类型,如果为促销订单则获取促销商品并获取结算价
         String orderPromotionType = order.getOrderPromotionType();
+
         //循环子订单记录流水
         for (OrderItem item : orderItems) {
             StoreFlow storeFlow = new StoreFlow();
@@ -99,12 +100,12 @@ public class StoreFlowServiceImpl extends ServiceImpl<StoreFlowMapper, StoreFlow
             storeFlow.setOrderPromotionType(item.getPromotionType());
             //格式化订单价格详情
             PriceDetailDTO priceDetailDTO = JSONUtil.toBean(item.getPriceDetail(), PriceDetailDTO.class);
-            //站点优惠券佣金
-            storeFlow.setSiteCouponCommission(priceDetailDTO.getSiteCouponCommission());
+            //站点优惠券比例=最大比例(100)-店铺承担比例
+            storeFlow.setSiteCouponPoint(CurrencyUtil.sub(100,priceDetailDTO.getSiteCouponPoint()));
             //平台优惠券 使用金额
             storeFlow.setSiteCouponPrice(priceDetailDTO.getSiteCouponPrice());
-            //站点优惠券佣金比例
-            storeFlow.setSiteCouponPoint(priceDetailDTO.getSiteCouponPoint());
+            //站点优惠券佣金（站点优惠券承担金额=优惠券金额 * (站点承担比例/100)）
+            storeFlow.setSiteCouponCommission(CurrencyUtil.mul(storeFlow.getSiteCouponPrice(),CurrencyUtil.div(storeFlow.getSiteCouponPoint(),100)));
 
             /**
              * @TODO 计算平台佣金
@@ -140,6 +141,7 @@ public class StoreFlowServiceImpl extends ServiceImpl<StoreFlowMapper, StoreFlow
             this.save(storeFlow);
         }
     }
+
 
     /**
      * 店铺订单退款流水
@@ -180,6 +182,12 @@ public class StoreFlowServiceImpl extends ServiceImpl<StoreFlowMapper, StoreFlow
         storeFlow.setFinalPrice(afterSale.getActualRefundPrice());
         //最终结算金额 =店铺流水金额+店铺单品返现支出金额+平台收取佣金金额
         storeFlow.setBillPrice(CurrencyUtil.add(storeFlow.getFinalPrice(), storeFlow.getDistributionRebate(), storeFlow.getCommissionPrice()));
+        //站点优惠券补贴返还金额=(站点优惠券补贴金额/购买商品数量)*退款商品数量
+        storeFlow.setSiteCouponCommission(CurrencyUtil.mul(CurrencyUtil.div(payStoreFlow.getSiteCouponCommission(),payStoreFlow.getNum()),afterSale.getNum()));
+        //平台优惠券 使用金额
+        storeFlow.setSiteCouponPrice(payStoreFlow.getSiteCouponPrice());
+        //站点优惠券佣金比例
+        storeFlow.setSiteCouponPoint(payStoreFlow.getSiteCouponPoint());
         //退款日志
         RefundLog refundLog = refundLogService.queryByAfterSaleSn(afterSale.getSn());
         //第三方流水单号

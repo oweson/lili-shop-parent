@@ -149,10 +149,9 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
                 oldSkuIds.add(goodsSkuVO.getId());
                 cache.remove(GoodsSkuService.getCacheKeys(goodsSkuVO.getId()));
             }
-            goodsIndexService.deleteIndexByIds(oldSkuIds);
             this.removeByIds(oldSkuIds);
             //删除sku相册
-            goodsGalleryService.removeByIds(oldSkuIds);
+            goodsGalleryService.removeByGoodsId(goods.getId());
             // 添加商品sku
             newSkuList = this.addGoodsSku(skuList, goods);
 
@@ -162,7 +161,13 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
         } else {
             newSkuList = new ArrayList<>();
             for (Map<String, Object> map : skuList) {
-                GoodsSku sku = new GoodsSku();
+                GoodsSku sku = null;
+                if (map.get("id") != null) {
+                    sku = this.getGoodsSkuByIdFromCache(map.get("id").toString());
+                }
+                if (sku == null || map.get("id") == null) {
+                    sku = new GoodsSku();
+                }
                 //设置商品信息
                 goodsInfo(sku, goods);
                 //设置商品规格信息
@@ -325,7 +330,8 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
     @Transactional(rollbackFor = Exception.class)
     public void updateGoodsSkuStatus(Goods goods) {
         LambdaUpdateWrapper<GoodsSku> updateWrapper = new LambdaUpdateWrapper<>();
-        updateWrapper.eq(GoodsSku::getGoodsId, goods.getId());
+        updateWrapper.eq(CharSequenceUtil.isNotEmpty(goods.getId()), GoodsSku::getGoodsId, goods.getId());
+        updateWrapper.eq(CharSequenceUtil.isNotEmpty(goods.getStoreId()), GoodsSku::getStoreId, goods.getStoreId());
         updateWrapper.set(GoodsSku::getMarketEnable, goods.getMarketEnable());
         updateWrapper.set(GoodsSku::getAuthFlag, goods.getAuthFlag());
         updateWrapper.set(GoodsSku::getDeleteFlag, goods.getDeleteFlag());
@@ -338,6 +344,31 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
             }
             if (!goodsSkus.isEmpty()) {
                 generateEs(goods);
+            }
+        }
+    }
+
+    /**
+     * 更新商品sku状态根据店铺id
+     *
+     * @param storeId      店铺id
+     * @param marketEnable 市场启用状态
+     * @param authFlag     审核状态
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateGoodsSkuStatusByStoreId(String storeId, String marketEnable, String authFlag) {
+        LambdaUpdateWrapper<GoodsSku> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(GoodsSku::getStoreId, storeId);
+        updateWrapper.set(CharSequenceUtil.isNotEmpty(marketEnable), GoodsSku::getMarketEnable, marketEnable);
+        updateWrapper.set(CharSequenceUtil.isNotEmpty(authFlag), GoodsSku::getAuthFlag, authFlag);
+        boolean update = this.update(updateWrapper);
+        if (Boolean.TRUE.equals(update)) {
+            if (GoodsStatusEnum.UPPER.name().equals(marketEnable)) {
+                applicationEventPublisher.publishEvent(new GeneratorEsGoodsIndexEvent("生成店铺商品", GoodsTagsEnum.GENERATOR_STORE_GOODS_INDEX.name(), storeId));
+            } else if (GoodsStatusEnum.DOWN.name().equals(marketEnable)) {
+                cache.vagueDel(CachePrefix.GOODS_SKU.getPrefix());
+                applicationEventPublisher.publishEvent(new GeneratorEsGoodsIndexEvent("删除店铺商品", GoodsTagsEnum.STORE_GOODS_DELETE.name(), storeId));
             }
         }
     }
@@ -563,7 +594,7 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
         if (!GoodsStatusEnum.UPPER.name().equals(goods.getMarketEnable()) || !GoodsAuthEnum.PASS.name().equals(goods.getAuthFlag())) {
             return;
         }
-        applicationEventPublisher.publishEvent(new GeneratorEsGoodsIndexEvent("生成商品索引事件", goods.getId()));
+        applicationEventPublisher.publishEvent(new GeneratorEsGoodsIndexEvent("生成商品", GoodsTagsEnum.GENERATOR_GOODS_INDEX.name(), goods.getId()));
     }
 
     /**
@@ -601,7 +632,7 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
             skus.add(goodsSku);
             cache.put(GoodsSkuService.getStockCacheKey(goodsSku.getId()), goodsSku.getQuantity());
         }
-        this.saveBatch(skus);
+        this.saveOrUpdateBatch(skus);
         return skus;
     }
 
