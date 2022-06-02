@@ -167,12 +167,7 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
             skuList = new ArrayList<>();
             for (Map<String, Object> map : goodsOperationDTO.getSkuList()) {
                 GoodsSku sku = null;
-                if (map.get("id") != null) {
-                    sku = GoodsSkuBuilder.build(this.getGoodsSkuByIdFromCache(map.get("id").toString()), map, goodsOperationDTO);
-                }
-                if (sku == null || map.get("id") == null) {
-                    sku = GoodsSkuBuilder.build(goods, map, goodsOperationDTO);
-                }
+                sku = GoodsSkuBuilder.build(goods, map, goodsOperationDTO);
                 renderGoodsSku(sku, goodsOperationDTO);
                 skuList.add(sku);
                 //如果商品状态值不对，则es索引移除
@@ -511,18 +506,14 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateGoodsStuck(List<GoodsSku> goodsSkus) {
-        //商品id集合 hashset 去重复
-        Set<String> goodsIds = new HashSet<>();
-        for (GoodsSku sku : goodsSkus) {
-            goodsIds.add(sku.getGoodsId());
-        }
+        Map<String, List<GoodsSku>> groupByGoodsIds = goodsSkus.stream().collect(Collectors.groupingBy(GoodsSku::getGoodsId));
         //获取相关的sku集合
         LambdaQueryWrapper<GoodsSku> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-        lambdaQueryWrapper.in(GoodsSku::getGoodsId, goodsIds);
+        lambdaQueryWrapper.in(GoodsSku::getGoodsId, groupByGoodsIds.keySet());
         List<GoodsSku> goodsSkuList = this.list(lambdaQueryWrapper);
 
         //统计每个商品的库存
-        for (String goodsId : goodsIds) {
+        for (String goodsId : groupByGoodsIds.keySet()) {
             //库存
             Integer quantity = 0;
             for (GoodsSku goodsSku : goodsSkuList) {
@@ -606,6 +597,18 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
         return count > 0;
     }
 
+    @Override
+    public Long countSkuNum(String storeId) {
+        LambdaQueryWrapper<GoodsSku> queryWrapper = new LambdaQueryWrapper<>();
+
+        queryWrapper
+                .eq(GoodsSku::getStoreId, storeId)
+                .eq(GoodsSku::getDeleteFlag, Boolean.FALSE)
+                .eq(GoodsSku::getAuthFlag, GoodsAuthEnum.PASS.name())
+                .eq(GoodsSku::getMarketEnable, GoodsStatusEnum.UPPER.name());
+        return this.count(queryWrapper);
+    }
+
     /**
      * 修改库存
      *
@@ -632,6 +635,9 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
     void renderGoodsSkuList(List<GoodsSku> goodsSkuList, GoodsOperationDTO goodsOperationDTO) {
         // 商品销售模式渲染器
         salesModelRenders.stream().filter(i -> i.getSalesMode().equals(goodsOperationDTO.getSalesModel())).findFirst().ifPresent(i -> i.renderBatch(goodsSkuList, goodsOperationDTO));
+        for (GoodsSku goodsSku : goodsSkuList) {
+            this.renderImages(goodsSku);
+        }
     }
 
     /**
@@ -643,6 +649,21 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
     void renderGoodsSku(GoodsSku goodsSku, GoodsOperationDTO goodsOperationDTO) {
         // 商品销售模式渲染器
         salesModelRenders.stream().filter(i -> i.getSalesMode().equals(goodsOperationDTO.getSalesModel())).findFirst().ifPresent(i -> i.renderSingle(goodsSku, goodsOperationDTO));
+        this.renderImages(goodsSku);
+    }
+
+    /**
+     * 渲染sku图片
+     *
+     * @param goodsSku
+     */
+    void renderImages(GoodsSku goodsSku) {
+        JSONObject jsonObject = JSONUtil.parseObj(goodsSku.getSpecs());
+        List<Map<String, String>> images = jsonObject.get("images", List.class);
+        if (images != null && !images.isEmpty()) {
+            goodsSku.setThumbnail(goodsGalleryService.getGoodsGallery(images.get(0).get("url")).getThumbnail());
+            goodsSku.setSmall(goodsGalleryService.getGoodsGallery(images.get(0).get("url")).getSmall());
+        }
     }
 
     /**
