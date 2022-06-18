@@ -5,9 +5,12 @@ import cn.lili.modules.goods.entity.dos.Goods;
 import cn.lili.modules.goods.entity.dos.GoodsSku;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
 import cn.lili.modules.goods.entity.dto.GoodsSearchParams;
+import cn.lili.modules.goods.entity.dto.GoodsSkuDTO;
 import cn.lili.modules.goods.entity.dto.GoodsSkuStockDTO;
 import cn.lili.modules.goods.entity.vos.GoodsSkuVO;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
@@ -136,6 +139,16 @@ public interface GoodsSkuService extends IService<GoodsSku> {
      */
     IPage<GoodsSku> getGoodsSkuByPage(GoodsSearchParams searchParams);
 
+
+    /**
+     * 分页查询商品sku信息
+     *
+     * @param page 分页参数
+     * @param queryWrapper 查询参数
+     * @return 商品sku信息
+     */
+    IPage<GoodsSkuDTO> getGoodsSkuDTOByPage(Page<GoodsSkuDTO> page, Wrapper<GoodsSkuDTO> queryWrapper);
+
     /**
      * 列表查询商品sku信息
      *
@@ -215,7 +228,7 @@ public interface GoodsSkuService extends IService<GoodsSku> {
     /**
      * 删除并且新增sku，即覆盖之前信息
      *
-     * @param goodsSkus
+     * @param goodsSkus 商品sku集合
      * @return
      */
     boolean deleteAndInsertGoodsSkus(List<GoodsSku> goodsSkus);
@@ -223,8 +236,8 @@ public interface GoodsSkuService extends IService<GoodsSku> {
     /**
      * 统计sku总数
      *
-     * @param storeId
-     * @return
+     * @param storeId 店铺id
+     * @return sku总数
      */
     Long countSkuNum(String storeId);
 }

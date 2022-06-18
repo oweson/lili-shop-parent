@@ -60,6 +60,7 @@
         <spotify>1.2.2</spotify>
         <spring-boot-admin>2.3.1</spring-boot-admin>
         <owasp-java-html-sanitizer>20211018.2</owasp-java-html-sanitizer>
+        <minio.version>8.0.3</minio.version>
     </properties>
 
     <modules>
@@ -87,7 +88,6 @@
                     <imageName>${docker-registry}/${project.artifactId}:${revision}.${images-version}</imageName>
                     <baseImage>java</baseImage>
                     <entryPoint>["java", "-jar", "/${project.build.finalName}.jar"]</entryPoint>
-                    <pushImage>true</pushImage>
                     <resources>
                         <resource>
                             <targetPath>/</targetPath>

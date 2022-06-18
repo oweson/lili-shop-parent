@@ -14,9 +14,11 @@ import cn.lili.common.properties.RocketmqCustomProperties;
 import cn.lili.common.security.context.UserContext;
 import cn.lili.common.utils.SnowFlake;
 import cn.lili.modules.goods.entity.dos.Goods;
+import cn.lili.modules.goods.entity.dos.GoodsGallery;
 import cn.lili.modules.goods.entity.dos.GoodsSku;
 import cn.lili.modules.goods.entity.dto.GoodsOperationDTO;
 import cn.lili.modules.goods.entity.dto.GoodsSearchParams;
+import cn.lili.modules.goods.entity.dto.GoodsSkuDTO;
 import cn.lili.modules.goods.entity.dto.GoodsSkuStockDTO;
 import cn.lili.modules.goods.entity.enums.GoodsAuthEnum;
 import cn.lili.modules.goods.entity.enums.GoodsStatusEnum;
@@ -43,9 +45,11 @@ import cn.lili.modules.search.utils.EsIndexUtil;
 import cn.lili.mybatis.util.PageUtil;
 import cn.lili.rocketmq.RocketmqSendCallbackBuilder;
 import cn.lili.rocketmq.tags.GoodsTagsEnum;
+import com.baomidou.mybatisplus.core.conditions.Wrapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -166,8 +170,7 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
         } else {
             skuList = new ArrayList<>();
             for (Map<String, Object> map : goodsOperationDTO.getSkuList()) {
-                GoodsSku sku = null;
-                sku = GoodsSkuBuilder.build(goods, map, goodsOperationDTO);
+                GoodsSku sku = GoodsSkuBuilder.build(goods, map, goodsOperationDTO);
                 renderGoodsSku(sku, goodsOperationDTO);
                 skuList.add(sku);
                 //如果商品状态值不对，则es索引移除
@@ -448,6 +451,11 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
         return this.page(PageUtil.initPage(searchParams), searchParams.queryWrapper());
     }
 
+    @Override
+    public IPage<GoodsSkuDTO> getGoodsSkuDTOByPage(Page<GoodsSkuDTO> page, Wrapper<GoodsSkuDTO> queryWrapper) {
+        return this.baseMapper.queryByParams(page, queryWrapper);
+    }
+
     /**
      * 列表查询商品sku信息
      *
@@ -636,6 +644,7 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
         // 商品销售模式渲染器
         salesModelRenders.stream().filter(i -> i.getSalesMode().equals(goodsOperationDTO.getSalesModel())).findFirst().ifPresent(i -> i.renderBatch(goodsSkuList, goodsOperationDTO));
         for (GoodsSku goodsSku : goodsSkuList) {
+            extendOldSkuValue(goodsSku);
             this.renderImages(goodsSku);
         }
     }
@@ -647,22 +656,43 @@ public class GoodsSkuServiceImpl extends ServiceImpl<GoodsSkuMapper, GoodsSku> i
      * @param goodsOperationDTO 商品操作DTO
      */
     void renderGoodsSku(GoodsSku goodsSku, GoodsOperationDTO goodsOperationDTO) {
+        extendOldSkuValue(goodsSku);
         // 商品销售模式渲染器
         salesModelRenders.stream().filter(i -> i.getSalesMode().equals(goodsOperationDTO.getSalesModel())).findFirst().ifPresent(i -> i.renderSingle(goodsSku, goodsOperationDTO));
         this.renderImages(goodsSku);
     }
 
     /**
+     * 将原sku的一些不会直接传递的值放到新的sku中
+     *
+     * @param goodsSku 商品sku
+     */
+    private void extendOldSkuValue(GoodsSku goodsSku) {
+        if (CharSequenceUtil.isNotEmpty(goodsSku.getGoodsId())) {
+            GoodsSku oldSku = this.getGoodsSkuByIdFromCache(goodsSku.getId());
+            if (oldSku != null) {
+                goodsSku.setCommentNum(oldSku.getCommentNum());
+                goodsSku.setViewCount(oldSku.getViewCount());
+                goodsSku.setBuyCount(oldSku.getBuyCount());
+                goodsSku.setGrade(oldSku.getGrade());
+            }
+        }
+    }
+
+    /**
      * 渲染sku图片
      *
-     * @param goodsSku
+     * @param goodsSku sku
      */
     void renderImages(GoodsSku goodsSku) {
         JSONObject jsonObject = JSONUtil.parseObj(goodsSku.getSpecs());
         List<Map<String, String>> images = jsonObject.get("images", List.class);
         if (images != null && !images.isEmpty()) {
-            goodsSku.setThumbnail(goodsGalleryService.getGoodsGallery(images.get(0).get("url")).getThumbnail());
-            goodsSku.setSmall(goodsGalleryService.getGoodsGallery(images.get(0).get("url")).getSmall());
+            GoodsGallery goodsGallery = goodsGalleryService.getGoodsGallery(images.get(0).get("url"));
+            goodsSku.setBig(goodsGallery.getOriginal());
+            goodsSku.setOriginal(goodsGallery.getOriginal());
+            goodsSku.setThumbnail(goodsGallery.getThumbnail());
+            goodsSku.setSmall(goodsGallery.getSmall());
         }
     }
 
