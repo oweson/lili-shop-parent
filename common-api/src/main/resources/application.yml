@@ -35,7 +35,7 @@ spring:
   redis:
     host: 127.0.0.1
     port: 6379
-    password: lilishop
+    password:
     lettuce:
       pool:
         # 连接池最大连接数（使用负值表示没有限制） 默认 8
@@ -66,7 +66,7 @@ spring:
         driverClassName: com.mysql.cj.jdbc.Driver
         url: jdbc:mysql://127.0.0.1:3306/lilishop?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
         username: root
-        password: lilishop
+        password: 111111
         maxActive: 20
         initialSize: 5
         maxWait: 60000
