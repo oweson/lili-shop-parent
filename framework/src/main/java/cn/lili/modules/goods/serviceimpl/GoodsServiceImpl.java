@@ -134,6 +134,10 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         List<String> list = this.baseMapper.getGoodsIdByStoreId(storeId);
         //下架店铺下的商品
         updateGoodsMarketAble(list, GoodsStatusEnum.DOWN, "店铺关闭");
+
+        applicationEventPublisher.publishEvent(new TransactionCommitSendMQEvent("下架商品",
+                rocketmqCustomProperties.getGoodsTopic(), GoodsTagsEnum.DOWN.name(), JSONUtil.toJsonStr(list)));
+
     }
 
     /**
@@ -337,13 +341,13 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
      */
     @Override
     public Boolean updateGoodsMarketAbleByStoreId(String storeId, GoodsStatusEnum goodsStatusEnum, String underReason) {
-        boolean result;
+
 
         LambdaUpdateWrapper<Goods> updateWrapper = this.getUpdateWrapperByStoreAuthority();
         updateWrapper.set(Goods::getMarketEnable, goodsStatusEnum.name());
         updateWrapper.set(Goods::getUnderMessage, underReason);
         updateWrapper.eq(Goods::getStoreId, storeId);
-        result = this.update(updateWrapper);
+        boolean result = this.update(updateWrapper);
 
         //修改规格商品
         this.goodsSkuService.updateGoodsSkuStatusByStoreId(storeId, goodsStatusEnum.name(), null);
@@ -505,6 +509,13 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
         } else {
             this.updateEsGoods(goodsIds);
         }
+
+
+        //下架商品发送消息
+        if (goodsStatusEnum.equals(GoodsStatusEnum.DOWN)) {
+            applicationEventPublisher.publishEvent(new TransactionCommitSendMQEvent("下架商品",
+                    rocketmqCustomProperties.getGoodsTopic(), GoodsTagsEnum.DOWN.name(), JSONUtil.toJsonStr(goodsIds)));
+        }
     }
 
     /**
@@ -574,7 +585,7 @@ public class GoodsServiceImpl extends ServiceImpl<GoodsMapper, Goods> implements
                 break;
             case "VIRTUAL_GOODS":
                 if (!"0".equals(goods.getTemplateId())) {
-                    throw new ServiceException(ResultCode.VIRTUAL_GOODS_NOT_NEED_TEMP);
+                    goods.setTemplateId("0");
                 }
                 break;
             default:
